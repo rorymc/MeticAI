@@ -227,11 +227,18 @@ function App() {
     window.scrollTo(0, 0)
   }, [viewState])
 
-  // Force WebView to recalculate layout when app is foregrounded (iOS Capacitor fix)
+  // iOS + Capacitor WKWebView can resume with stale landscape viewport values on some iPads.
+  // Toggling the root display on foreground forces a full reflow and clears the squished layout.
+  // Keep this native-iOS-only to avoid unnecessary accessibility disruption on other platforms.
   useEffect(() => {
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const isNativeIOS = isNativePlatform() && isIOSDevice
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && isNativeIOS) {
         document.documentElement.style.display = 'none'
+        // Reading offsetHeight forces a synchronous reflow; `void` discards the value intentionally.
         void document.documentElement.offsetHeight
         document.documentElement.style.display = ''
       }
