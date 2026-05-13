@@ -227,6 +227,20 @@ function App() {
     window.scrollTo(0, 0)
   }, [viewState])
 
+  // Force WebView to recalculate layout when app is foregrounded (iOS Capacitor fix)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        document.documentElement.style.display = 'none'
+        void document.documentElement.offsetHeight
+        document.documentElement.style.display = ''
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   // Track session count (once per browser session)
   useEffect(() => {
     if (sessionStorage.getItem('meticai-session-counted')) return
