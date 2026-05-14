@@ -221,3 +221,52 @@ describe('App cloud sync guard', () => {
     expect(localStorage.getItem('meticai-auto-sync-ai-description')).toBe('true')
   })
 })
+
+describe('App iOS resume reflow', () => {
+  beforeEach(() => {
+    mockedIsDemoMode.mockReturnValue(false)
+    mockedIsDirectMode.mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('forces a reflow on visibilitychange when app is native iOS', async () => {
+    mockedIsNativePlatform.mockReturnValue(true)
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('iPad')
+    vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('iPad')
+    vi.spyOn(window.navigator, 'maxTouchPoints', 'get').mockReturnValue(5)
+
+    const offsetHeightGetter = vi.fn(() => 100)
+    Object.defineProperty(document.documentElement, 'offsetHeight', {
+      configurable: true,
+      get: offsetHeightGetter,
+    })
+
+    render(<App />)
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect(offsetHeightGetter).toHaveBeenCalled()
+    expect(document.documentElement.style.display).toBe('')
+  })
+
+  it('does not force a reflow on visibilitychange when app is not native iOS', () => {
+    mockedIsNativePlatform.mockReturnValue(false)
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('iPad')
+    vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('iPad')
+    vi.spyOn(window.navigator, 'maxTouchPoints', 'get').mockReturnValue(5)
+
+    const offsetHeightGetter = vi.fn(() => 100)
+    Object.defineProperty(document.documentElement, 'offsetHeight', {
+      configurable: true,
+      get: offsetHeightGetter,
+    })
+
+    render(<App />)
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect(offsetHeightGetter).not.toHaveBeenCalled()
+    expect(document.documentElement.style.display).toBe('')
+  })
+})

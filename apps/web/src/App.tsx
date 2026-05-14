@@ -344,19 +344,22 @@ function App() {
     }
   }, [machineState.state, notifyPreheatComplete, playMachineReady])
 
-  // WKWebView layout fix: force reflow when app resumes from background.
-  // iPadOS WKWebView can fail to recompute CSS grid after backgrounding.
   useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        // Nudge layout by toggling a harmless property — avoids visible flash
-        const root = document.documentElement
-        root.style.zoom = '0.9999'
-        requestAnimationFrame(() => { root.style.zoom = '' })
+    const isIOSDevice =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const isNativeIOS = isNativePlatform() && isIOSDevice
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isNativeIOS) {
+        document.documentElement.style.display = 'none'
+        void document.documentElement.offsetHeight
+        document.documentElement.style.display = ''
       }
     }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
   // Theme preference (light/dark/system)
@@ -782,18 +785,6 @@ function App() {
         clearTimeout(clickTimerRef.current)
       }
     }
-  }, [])
-
-  // Fix iPad layout squishing when returning from background (#422)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Force layout recalculation by triggering a resize event
-        window.dispatchEvent(new Event('resize'))
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
   const handleBackToStart = useCallback(() => {
