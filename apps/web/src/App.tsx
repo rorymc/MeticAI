@@ -344,24 +344,56 @@ function App() {
     }
   }, [machineState.state, notifyPreheatComplete, playMachineReady])
 
+  // Force layout recalculation when app resumes from background (iOS Capacitor WKWebView fix).
+  // Uses Capacitor's appStateChange for reliable native lifecycle events, with a delay
+  // to let WKWebView finish viewport recalculation before forcing reflow + resize.
   useEffect(() => {
-    // iPadOS can report as MacIntel with touch support in WebViews.
+    if (!isNativePlatform()) return
+
     const isIOSDevice =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-    const isNativeIOS = isNativePlatform() && isIOSDevice
+    if (!isIOSDevice) return
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isNativeIOS) {
-        document.documentElement.style.display = 'none'
-        // Reading offsetHeight forces synchronous layout reflow on WKWebView resume.
-        void document.documentElement.offsetHeight
-        document.documentElement.style.display = ''
+    let cleanup: (() => void) | undefined
+
+    ;(async () => {
+      try {
+        const { App: CapApp } = await import('@capacitor/app')
+        const listener = await CapApp.addListener('appStateChange', ({ isActive }) => {
+          if (!isActive) return
+          // Wait for WKWebView to finish viewport recalculation
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              // Force CSS reflow
+              document.documentElement.style.display = 'none'
+              void document.documentElement.offsetHeight
+              document.documentElement.style.display = ''
+              // Trigger all resize/matchMedia listeners so React hooks update
+              window.dispatchEvent(new Event('resize'))
+            }, 100)
+          })
+        })
+        cleanup = () => listener.remove()
+      } catch {
+        // Fallback to visibilitychange if Capacitor App plugin unavailable
+        const handleVisibilityChange = () => {
+          if (document.visibilityState !== 'visible') return
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              document.documentElement.style.display = 'none'
+              void document.documentElement.offsetHeight
+              document.documentElement.style.display = ''
+              window.dispatchEvent(new Event('resize'))
+            }, 100)
+          })
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        cleanup = () => document.removeEventListener('visibilitychange', handleVisibilityChange)
       }
-    }
+    })()
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+    return () => cleanup?.()
   }, [])
 
   // Theme preference (light/dark/system)
