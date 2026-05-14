@@ -345,6 +345,7 @@ function App() {
   }, [machineState.state, notifyPreheatComplete, playMachineReady])
 
   useEffect(() => {
+    // iPadOS can report as MacIntel with touch support in WebViews.
     const isIOSDevice =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -353,6 +354,7 @@ function App() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isNativeIOS) {
         document.documentElement.style.display = 'none'
+        // Reading offsetHeight forces synchronous layout reflow on WKWebView resume.
         void document.documentElement.offsetHeight
         document.documentElement.style.display = ''
       }

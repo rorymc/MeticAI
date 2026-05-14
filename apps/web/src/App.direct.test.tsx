@@ -234,8 +234,8 @@ describe('App iOS resume reflow', () => {
 
   it('forces a reflow on visibilitychange when app is native iOS', async () => {
     mockedIsNativePlatform.mockReturnValue(true)
-    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('iPad')
-    vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('iPad')
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0')
+    vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('MacIntel')
     vi.spyOn(window.navigator, 'maxTouchPoints', 'get').mockReturnValue(5)
 
     const offsetHeightGetter = vi.fn(() => 100)
@@ -253,9 +253,33 @@ describe('App iOS resume reflow', () => {
 
   it('does not force a reflow on visibilitychange when app is not native iOS', () => {
     mockedIsNativePlatform.mockReturnValue(false)
-    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('iPad')
-    vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('iPad')
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0')
+    vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('MacIntel')
     vi.spyOn(window.navigator, 'maxTouchPoints', 'get').mockReturnValue(5)
+
+    const offsetHeightGetter = vi.fn(() => 100)
+    Object.defineProperty(document.documentElement, 'offsetHeight', {
+      configurable: true,
+      get: offsetHeightGetter,
+    })
+
+    render(<App />)
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect(offsetHeightGetter).not.toHaveBeenCalled()
+    expect(document.documentElement.style.display).toBe('')
+  })
+
+  it('does not force a reflow when visibilitychange fires while hidden', () => {
+    mockedIsNativePlatform.mockReturnValue(true)
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0')
+    vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('MacIntel')
+    vi.spyOn(window.navigator, 'maxTouchPoints', 'get').mockReturnValue(5)
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    })
 
     const offsetHeightGetter = vi.fn(() => 100)
     Object.defineProperty(document.documentElement, 'offsetHeight', {
